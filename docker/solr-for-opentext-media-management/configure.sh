@@ -31,14 +31,3 @@ fi
 if [ -f /opt/solr-index/otmmcore/data/index/write.lock ]; then
 	rm /opt/solr-index/otmmcore/data/index/write.lock
 fi
-
-
-#
-# Configure Solr after it’s started up
-#
-
-(
-	printf "${GREEN}Waiting for Solr to load...${NC}\n"
-	for i in {1..100}; do (curl --silent --fail --output /dev/null --head http://localhost:8983/solr/otmm/schema/managed) > /dev/null 2>&1 && break || if [ "$i" -lt 101 ]; then sleep $((i * 2)); else printf "${RED}Unable to connect to Solr, exiting${NC}\n" && exit 1; fi; done
-		printf "${GREEN}Solr started!${NC}\n"
-) &

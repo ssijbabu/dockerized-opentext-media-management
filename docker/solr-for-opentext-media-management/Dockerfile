@@ -5,20 +5,25 @@ MAINTAINER Geoffrey Booth <geoffrey.booth@disney.com>
 USER root
 ENV TERM xterm
 
+RUN apt-get update \
+	&& apt-get install --yes bsdtar \
+	&& apt-get clean
+
 # See https://knowledge.opentext.com/knowledge/piroot/medmgt/v160000/medmgt-igd/en/html/jsframe.htm?inst-solr-sep-srv-unix
 # Add folder created via `ant create-solr-index` in step 3
 # Save it to a test data folder so that we don’t overwrite an index which may already be in the Docker volume mounted on /opt/solr-index
 ARG OBJECTS_ROOT_URL
+RUN mkdir --parents /opt/solr-index/ /opt/default-otmmcore/solr-index/ /opt/opentext-media-management-installer/ \
+	&& curl --location $OBJECTS_ROOT_URL/opentext-media-management-16.2/mediamgmt_16.2_linux.iso \
+		| bsdtar --extract --preserve-permissions --file - --directory /opt/opentext-media-management-installer/ \
+	&& unzip -j /opt/opentext-media-management-installer/OTMM/Disk1/InstData/Resource1.zip '$IA_PROJECT_DIR$/delivery/installservers.zip' -d /opt/opentext-media-management-installer/ \
+	&& unzip -j /opt/opentext-media-management-installer/installservers.zip indexer/solr_otmm_531.zip -d /opt/opentext-media-management-installer/ \
+	&& unzip /opt/opentext-media-management-installer/solr_otmm_531.zip -d /opt/opentext-media-management-installer/ \
+	&& mv /opt/opentext-media-management-installer/solr5_otmm/otmmcore /opt/default-otmmcore/solr-index/ \
+	&& rm -rf /opt/opentext-media-management-installer/
 
-#
-# Uncomment the next section once `solr5_otmm.tar.gz` is uploaded to `$OBJECTS_ROOT_URL`:
-#
-
-# RUN mkdir --parents /opt/solr-index/ /opt/default-otmmcore/solr-index/ \
-# 	&& curl --retry 999 --retry-max-time 0 -C - --show-error --location $OBJECTS_ROOT_URL/opentext-media-management-16.2/solr5_otmm.tar.gz \
-# 		| tar --extract --gunzip --strip-components=3 --directory /opt/default-otmmcore/solr-index
-
-
+# Set the lock type, mimicking `ant edit-solr-config-unix` (see OTMM $TEAMS_HOME/install/ant/index.xml)
+RUN sed --in-place 's/@@LockType@@/simple/' /opt/default-otmmcore/solr-index/otmmcore/conf/solrconfig.xml
 
 # Copy config file that points to that index folder, via instructions step 6
 COPY solr.xml /opt/solr/server/solr/solr.xml

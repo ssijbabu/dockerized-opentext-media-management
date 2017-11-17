@@ -42,54 +42,6 @@ In the Keychain Access main window, in the left sidebar under `Keychains` choose
 
 That’s it! When Docker Compose has finished building and the app has started up, go to `https://localhost` and you should see the OpenText login page. You can login as `tsuper` / `MediaVault`.
 
-## Solr
-
-So OpenText Media Management 16.2 is running, but search doesn’t work. There is a Docker container for Solr, but we still need to follow the steps in the OTMM installation guide that tell us to copy some files from the OTMM server to the Solr server. In our case, however, we’ll be copying those files to your file server.
-
-We’re going to be following [OpenText’s instructions for configuring Solr as a remote server](http://webapp.opentext.com/piroot/medmgt/v160200/medmgt-igd/en/html/_manual.htm) (since that’s functionally how our separate Docker containers act). In a terminal window, navigate to this repo’s `docker` folder and run:
-
-```bash
-./bash.sh otmm
-```
-
-This gets you a command prompt _inside_ the running OTMM core app Docker container. It’s like using SSH to get a commant prompt in a remote server. Now follow OpenText’s instructions:
-
-```bash
-cd $TEAMS_HOME/install/ant
-ant create-solr-index
-```
-
-This creates a folder `$TEAMS_HOME/solr5_otmm`. Let’s compress the folder into an archive so that we can upload it to our server:
-
-```bash
-tar --gzip --create --file /solr5_otmm.tar.gz $TEAMS_HOME/solr5_otmm
-exit
-```
-
-Now we should be back at the command prompt of the Mac. Copy the file we just created out of the OTMM container’s filesystem into the Mac’s:
-
-```bash
-docker cp otmm_opentext-media-management-core-app_1:/solr5_otmm.tar.gz ~/Downloads
-```
-
-Upload the file from your `Downloads` folder to your file server, so that it is accessible via `$OBJECTS_ROOT_URL/opentext-media-management-16.2/solr5_otmm.tar.gz`.
-
-Finally, we need to update the Solr Docker container to use this file you just uploaded. The code is already there, but commented out, because it can’t be built without the file you just uploaded. Open `docker/solr-for-opentext-media-management/Dockerfile` and remove the `# `s from lines 17, 18 and 19:
-
-```bash
-# RUN mkdir --parents /opt/solr-index/ /opt/default-otmmcore/solr-index/ \
-# 	&& curl --retry 999 --retry-max-time 0 -C - --show-error --location $OBJECTS_ROOT_URL/opentext-media-management-16.2/solr5_otmm.tar.gz \
-# 		| tar --extract --gunzip --strip-components=3 --directory /opt/default-otmmcore/solr-index
-```
-
-should become:
-
-```bash
-RUN mkdir --parents /opt/solr-index/ /opt/default-otmmcore/solr-index/ \
-	&& curl --retry 999 --retry-max-time 0 -C - --show-error --location $OBJECTS_ROOT_URL/opentext-media-management-16.2/solr5_otmm.tar.gz \
-		| tar --extract --gunzip --strip-components=3 --directory /opt/default-otmmcore/solr-index
-```
-
 ## Make `use-installed-files` snapshots
 
 There are two “modes” to the Docker images: `install-on-start` and `use-installed-files`. The mode is defined by the `DOCKER_MODE` environment variable in `docker/.env`.
